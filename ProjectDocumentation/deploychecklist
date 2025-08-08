@@ -1,0 +1,86 @@
+# Deployment Checklist – Azure Billing Archiver
+
+Use this checklist before deploying to production to ensure a smooth rollout.
+
+---
+
+## 1. Pre-Deployment
+- [ ] **Set unique names** for:
+  - `cosmos_name`
+  - `storage_name`
+  - `keyvault_name`
+- [ ] Confirm **Azure subscription & region** are correct.
+- [ ] Review **Terraform variables** in `variables.tf` for production settings.
+- [ ] Verify **RBAC assignments** for Managed Identity.
+- [ ] Ensure **Cosmos DB autoscale or manual RU/s** matches expected load.
+- [ ] Check **Blob lifecycle rules**:
+  - Archive after 85 days.
+  - Delete backups after 7 days.
+
+---
+
+## 2. Terraform Deployment
+- [ ] Run:
+  ```bash
+  terraform init
+  terraform apply -auto-approve
+  ```
+- [ ] Verify all resources are provisioned:
+  - Cosmos DB
+  - Blob Storage
+  - Azure Functions
+  - Key Vault
+  - Monitoring & Alerts
+  - Backup Configuration
+
+---
+
+## 3. Secrets & Configuration
+- [ ] Store **Cosmos DB connection string** in Key Vault.
+- [ ] Assign **Function App Managed Identity** access to Key Vault secrets.
+- [ ] Configure **App Settings** in Function App:
+  - `COSMOS_CONNECTION_STRING`
+  - `STORAGE_ACCOUNT_NAME`
+  - `STORAGE_CONTAINER_NAME`
+
+---
+
+## 4. Function Deployment
+- [ ] Deploy **Archive Function** (`archive_function/`):
+  - `__init__.py`
+  - `function.json`
+  - `requirements.txt`
+- [ ] Deploy **Rehydrate Function** (`rehydrate_function/`):
+  - Ensure triggers & bindings match requirements.
+- [ ] Test both functions in staging.
+
+---
+
+## 5. Monitoring & Alerts
+- [ ] Enable **Log Analytics** with 90-day retention.
+- [ ] Set up:
+  - Function failure alerts.
+  - Cost alerts.
+  - Storage availability alerts.
+- [ ] Test alert notifications.
+
+---
+
+## 6. Backup & Recovery
+- [ ] Verify **daily backup job** is running.
+- [ ] Test **backup restore** in a non-production environment.
+- [ ] Ensure **old backups are deleted after 7 days**.
+
+---
+
+## 7. Final Validation
+- [ ] Test **end-to-end flow**:
+  1. Insert test records in Cosmos DB.
+  2. Archive after 85 days (simulate date).
+  3. Retrieve archived data via rehydrate function.
+- [ ] Confirm **cost optimization** is in effect.
+- [ ] Document **any custom production changes** in `PROJECT_DOCUMENTATION.md`.
+
+---
+
+✅ **Deployment Approved** – Sign-off by DevOps Lead & QA Lead.

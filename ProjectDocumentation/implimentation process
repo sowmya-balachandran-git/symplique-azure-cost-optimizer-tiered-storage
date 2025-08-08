@@ -1,0 +1,225 @@
+#1️ Architecture Enhancements
+Core Components (Existing)
+Azure Cosmos DB – Primary data store for recent billing records.
+
+Azure Blob Storage – Archive store for cold data.
+
+Azure Function (Rehydrate) – Fetches archived data on request.
+
+Bash script for archiving – Moves old data from Cosmos DB to Blob.
+
+Azure Key Vault
+
+Stores Cosmos DB connection strings, Storage account keys, and Function app settings.
+
+Integrated with Managed Identity for passwordless access.
+
+RBAC
+
+Managed Identity for Function App, Archiver VM, and Automation Account.
+
+Roles:
+
+Cosmos DB Built-in Data Reader/Contributor
+
+Storage Blob Data Contributor
+
+Key Vault Secrets User
+
+Monitoring
+
+Log Analytics Workspace.
+
+Azure Monitor + Application Insights for Function and Cosmos DB.
+
+Alerts for high request latency, failed reads, or abnormal throughput spikes.
+
+Backup
+
+Azure Backup for Cosmos DB (Continuous mode).
+
+Blob Storage lifecycle rule for archiving + backup.
+
+Cron job (Azure Automation or Logic App) to delete backups older than 7 days.
+
+Cost Efficiency Logic
+
+Archive data after 90 days.
+
+Lifecycle rules to move archived blobs to cool/archive tier for cost savings.
+
+#2️ Terraform Repo Structure
+pgsql
+Copy
+Edit
+symplique-azure-cost-optimizer-tiered-storage/
+│── README.md
+│── variables.tf
+│── provider.tf
+│── main.tf
+│── outputs.tf
+│── .gitignore
+│
+├── modules/
+│   ├── cosmosdb/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── storage/
+│   ├── functionapp/
+│   ├── keyvault/
+│   ├── rbac/
+│   ├── monitoring/
+│   ├── backup/
+│
+├── scripts/
+│   ├── archive_records.sh
+│   ├── cleanup_old_backups.sh
+│
+└── function/
+    ├── rehydrate_function/
+    │   ├── __init__.py
+    │   ├── function.json
+    │   └── requirements.txt
+    └── archive_function/
+        ├── __init__.py
+        ├── function.json
+        └── requirements.txt
+
+#3️ Key Terraform Modules
+Key Vault Module
+Creates Key Vault.
+
+Stores Cosmos DB & Storage account credentials.
+
+Uses RBAC access policies for Managed Identity.
+
+RBAC Module
+Assigns correct roles to Function App, Automation Runbook, or VM identity.
+
+Monitoring Module
+Creates Log Analytics workspace.
+
+Links Cosmos DB, Function App, and Storage.
+
+Sets up Azure Monitor alerts.
+
+Backup Module
+Enables periodic backup for Cosmos DB.
+
+Creates Blob lifecycle rules.
+
+Creates Automation Runbook for cleanup (cleanup_old_backups.sh).
+
+#4️ Functions & Scripts
+archive_records.sh
+Uses Managed Identity.
+
+Reads secrets from Key Vault.
+
+Moves data older than 90 days to Blob Storage.
+
+Logs actions to Log Analytics.
+
+cleanup_old_backups.sh
+Deletes Blob Storage backups older than 7 days.
+
+Runs as cron in Azure Automation or Function Timer trigger.
+
+Archive Function
+Runs on schedule via function.json Timer Trigger.
+
+Moves data older than 90 days from Cosmos DB to Blob.
+
+Rehydrate Function
+Fetches archived data from Blob when requested.
+
+#5️ Data Flow
+Write → New records go to Cosmos DB.
+
+Read recent (< 90 days) → Directly from Cosmos DB.
+
+Read old (> 90 days) → Function fetches from Blob archive.
+
+Archive job → Bash script or Azure Function archives old data daily.
+
+Monitor & Alert → Log Analytics + Azure Monitor watch for anomalies.
+
+Backup cleanup → Cron deletes old backups.
+
+#6️ Security
+No static keys in code.
+
+Managed Identity + Key Vault.
+
+RBAC scoped to least privilege.
+
+Audit logs via Azure Monitor.
+
+#7️ Deployment Process  Step by Step
+
+#Step 1 Prerequisites
+Install Azure CLI, Terraform, Git, and Azure Functions Core Tools.
+
+Have Contributor permissions on the subscription.
+
+Clone the repo:
+
+git clone https://github.com/sowmya-balachandran/symplique-azure-cost-optimizer-tiered-storage.git
+cd symplique-azure-cost-optimizer-tiered-storage
+
+#Step 2  Configure Variables
+Update variables.tf with:
+
+Resource group name
+
+Region
+
+Unique names for Cosmos DB, Storage, and Key Vault
+
+Retention periods
+
+#Step 3  Deploy Infrastructure with Terraform
+
+terraform init
+terraform plan
+terraform apply -auto-approve
+This creates Cosmos DB, Blob Storage, Key Vault, Function App, Log Analytics, RBAC roles, and backup policies.
+
+#Step 4 Deploy Azure Functions
+Navigate to function/rehydrate_function and function/archive_function directories:
+
+func azure functionapp publish <FunctionAppName>
+Ensure Managed Identity is enabled on the Function App.
+
+# Step 5  Upload Bash Scripts to Automation
+Upload archive_records.sh and cleanup_old_backups.sh to Azure Automation Runbook or store in a VM with cron jobs.
+
+Link scripts to Managed Identity and Key Vault access.
+
+#Step 6  Configure Monitoring & Alerts
+Verify Log Analytics and Application Insights are receiving data.
+
+Create Azure Monitor alerts for:
+
+High latency
+
+Failed requests
+
+Unusual throughput
+
+#Step 7  Test the Flow
+Insert dummy billing data in Cosmos DB.
+
+Wait for archive job to run or trigger manually.
+
+Test reading both recent and archived data.
+
+Verify backups and retention rules are working.
+
+#Step 8  Production Rollout
+Switch to production resource group and subscription.
+
+Run Terraform apply with production variables.
+
+Set Function App scaling rules as needed.

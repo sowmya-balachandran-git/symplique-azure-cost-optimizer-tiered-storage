@@ -1,0 +1,80 @@
+# Troubleshooting Guide – Azure Billing Archiver
+
+This guide lists common problems you might face in production and how to fix them quickly.
+
+---
+
+## 1. Cosmos DB is Down or Slow
+
+**Symptoms:**
+
+- API calls time out when fetching recent billing records.
+- Writes to Cosmos DB fail.
+
+**Fix:**
+
+- Enable **automatic failover** to a secondary Cosmos DB region.
+- Implement **retry logic** in API calls.
+- Set **Azure Monitor alerts** to notify the on-call team.
+
+---
+
+## 2. Blob Storage Unavailable
+
+**Symptoms:**
+
+- Archived data can’t be retrieved.
+- Rehydration function fails.
+
+**Fix:**
+
+- Keep critical archived data replicated in a **secondary region**.
+- Enable **Blob soft delete** and **blob versioning** to prevent permanent loss.
+
+---
+
+## 3. Azure Function Failure
+
+**Symptoms:**
+
+- Archiving or rehydration jobs stop unexpectedly.
+- No new data appears in Blob Storage.
+
+**Fix:**
+
+- Configure **retry policies** in Functions.
+- Use **dead-letter queues** for failed jobs.
+- Send alerts via **Azure Monitor** → **Email / Teams / PagerDuty**.
+
+---
+
+## 4. Data Corruption
+
+**Symptoms:**
+
+- Archived files are incomplete.
+- Checksums don’t match after transfer.
+
+**Fix:**
+
+- Run **checksum validation** after archiving.
+- Use **Cosmos DB backup restore points** to recover lost data.
+
+---
+
+## 5. Cost Spikes
+
+**Symptoms:**
+
+- Sudden high storage or Cosmos DB charges.
+
+**Fix:**
+
+- Set **Azure Cost Alerts**.
+- Review archive schedule and **optimize blob tiering**.
+- Delete unused backups regularly.
+
+---
+
+**Tip:**  
+Test failover, archiving, and rehydration in a **staging environment** before making changes in production.
